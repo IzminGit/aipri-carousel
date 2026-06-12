@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>アイプリカード 回転レーン試作 v2</title>
+<title>aipri-carousel</title>
 <style>
   * {
     box-sizing: border-box;
@@ -37,19 +37,6 @@
 
   .header {
     text-align: center;
-  }
-
-  .title {
-    font-size: clamp(18px, 5vw, 26px);
-    font-weight: 900;
-    color: #d83d9c;
-    text-shadow: 0 2px 0 rgba(255,255,255,0.9);
-  }
-
-  .subtitle {
-    margin-top: 4px;
-    font-size: 12px;
-    color: #9f6aa0;
   }
 
   .lane-wrap {
@@ -86,18 +73,6 @@
   .lane-wrap::after {
     right: 0;
     background: linear-gradient(270deg, rgba(228,244,255,0.98), transparent);
-  }
-
-  .lane-label {
-    width: fit-content;
-    margin: 0 auto 10px;
-    padding: 5px 14px;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.86);
-    color: #d83d9c;
-    font-size: 13px;
-    font-weight: 800;
-    box-shadow: 0 2px 12px rgba(200, 80, 160, 0.12);
   }
 
   .track-viewport {
@@ -326,14 +301,10 @@
 </head>
 <body>
 <div class="app">
-  <header class="header">
-    <div class="title">アイプリカード 回転レーン</div>
-    <div class="subtitle">カードをタッチすると表面を大きく表示します</div>
-  </header>
+  <header class="header"></header>
 
   <main class="lane-wrap">
-    <div class="lane-label">右から左へカードが流れます</div>
-    <div class="track-viewport" id="viewport" aria-label="アイプリカードの回転レーン">
+    <div class="track-viewport" id="viewport" aria-label="カード表示エリア">
       <div class="track" id="track"></div>
     </div>
   </main>
