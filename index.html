@@ -13,7 +13,7 @@
 
   :root {
     --card-width: min(35vw, 150px);
-    --lane-height: min(74vw, 330px);
+    --lane-height: min(74vw, calc(100dvh - 72px), 330px);
   }
 
   body {
@@ -30,20 +30,15 @@
   .app {
     min-height: 100dvh;
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    gap: 10px;
-    padding: 14px 12px 18px;
-  }
-
-  .header {
-    text-align: center;
+    place-items: center;
+    padding: 12px;
   }
 
   .lane-wrap {
     width: 100%;
     align-self: center;
     border-radius: 28px;
-    padding: 18px 0;
+    padding: clamp(10px, 2.5dvh, 18px) 0;
     background:
       radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95), transparent 24%),
       linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.36));
@@ -144,32 +139,6 @@
     overflow: hidden;
     text-align: center;
     text-shadow: 0 1px 0 rgba(255,255,255,0.9);
-  }
-
-  .footer {
-    text-align: center;
-    font-size: 12px;
-    color: #9a6897;
-  }
-
-  .control-row {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    align-items: center;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-  }
-
-  .control-button {
-    border: 1.5px solid rgba(216, 61, 156, 0.24);
-    border-radius: 999px;
-    padding: 8px 14px;
-    background: rgba(255,255,255,0.78);
-    color: #c73691;
-    font-weight: 800;
-    font-size: 13px;
-    box-shadow: 0 4px 14px rgba(180, 80, 160, 0.12);
   }
 
   .modal {
@@ -290,34 +259,33 @@
   @media (min-width: 700px) {
     :root {
       --card-width: min(22vw, 180px);
-      --lane-height: min(54vw, 390px);
+      --lane-height: min(54vw, calc(100dvh - 72px), 390px);
     }
 
     .track {
       gap: 22px;
     }
   }
+
+  @media (orientation: landscape) and (max-height: 500px) {
+    :root {
+      --card-width: min(22vw, 180px);
+      --lane-height: min(54vw, calc(100dvh - 72px), 330px);
+    }
+
+    .app {
+      padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    }
+  }
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="header"></header>
-
   <main class="lane-wrap">
     <div class="track-viewport" id="viewport" aria-label="カード表示エリア">
       <div class="track" id="track"></div>
     </div>
   </main>
-
-  <footer class="footer">
-    <div class="control-row">
-      <button class="control-button" id="speed-down">ゆっくり</button>
-      <button class="control-button" id="toggle-pause">一時停止</button>
-      <button class="control-button" id="speed-up">はやく</button>
-      <button class="control-button" id="reset-flow">流し直す</button>
-    </div>
-    <div>v2: JavaScriptで確実に横移動させる版です。</div>
-  </footer>
 </div>
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -470,7 +438,6 @@
     selectedCard = card;
     currentSide = side;
     paused = true;
-    applyPauseButton();
 
     modalTitle.textContent = card.name;
     modalMeta.textContent = `${card.id} / ${card.char} / ${RARITY_STARS[card.rarity] || ""}`;
@@ -483,17 +450,8 @@
   function closeModal() {
     modal.classList.remove("open");
     selectedCard = null;
-  }
-
-  function switchSide(side) {
-    if (!selectedCard) return;
-    currentSide = side;
-    largeImage.src = imgUrl(selectedCard, currentSide);
-    largeImage.alt = `${selectedCard.name} ${currentSide === "O" ? "表面" : "裏面"}`;
-  }
-
-  function applyPauseButton() {
-    document.getElementById("toggle-pause").textContent = paused ? "再開" : "一時停止";
+    paused = false;
+    lastTime = performance.now();
   }
 
   function showToast(message) {
@@ -512,22 +470,12 @@
     if (event.target === modal) closeModal();
   });
 
-  document.getElementById("toggle-pause").addEventListener("click", () => {
-    paused = !paused;
-    applyPauseButton();
-  });
-
-  document.getElementById("speed-down").addEventListener("click", () => {
-    speedPxPerSec = Math.max(20, speedPxPerSec - 14);
-    showToast("ゆっくりにしました");
-  });
-
-  document.getElementById("speed-up").addEventListener("click", () => {
-    speedPxPerSec = Math.min(160, speedPxPerSec + 14);
-    showToast("はやくしました");
-  });
-
-  document.getElementById("reset-flow").addEventListener("click", resetFlow);
+  function switchSide(side) {
+    if (!selectedCard) return;
+    currentSide = side;
+    largeImage.src = imgUrl(selectedCard, currentSide);
+    largeImage.alt = `${selectedCard.name} ${currentSide === "O" ? "表面" : "裏面"}`;
+  }
 
   window.addEventListener("resize", () => {
     measure();
