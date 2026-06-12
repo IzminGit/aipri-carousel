@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>アイプリカード 回転レーン試作 v2</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --card-width: min(35vw, 150px);
+    --lane-height: min(74vw, 330px);
+  }
+
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Hiragino Maru Gothic ProN", sans-serif;
+    background: linear-gradient(135deg, #ffe4f0 0%, #f4e7ff 48%, #e4f4ff 100%);
+    color: #7a336c;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .app {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+    padding: 14px 12px 18px;
+  }
+
+  .header {
+    text-align: center;
+  }
+
+  .title {
+    font-size: clamp(18px, 5vw, 26px);
+    font-weight: 900;
+    color: #d83d9c;
+    text-shadow: 0 2px 0 rgba(255,255,255,0.9);
+  }
+
+  .subtitle {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #9f6aa0;
+  }
+
+  .lane-wrap {
+    width: 100%;
+    align-self: center;
+    border-radius: 28px;
+    padding: 18px 0;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.95), transparent 24%),
+      linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.36));
+    box-shadow:
+      inset 0 0 0 2px rgba(255,255,255,0.62),
+      0 16px 40px rgba(188, 80, 160, 0.18);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .lane-wrap::before,
+  .lane-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 54px;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .lane-wrap::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(255,228,240,0.98), transparent);
+  }
+
+  .lane-wrap::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(228,244,255,0.98), transparent);
+  }
+
+  .lane-label {
+    width: fit-content;
+    margin: 0 auto 10px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.86);
+    color: #d83d9c;
+    font-size: 13px;
+    font-weight: 800;
+    box-shadow: 0 2px 12px rgba(200, 80, 160, 0.12);
+  }
+
+  .track-viewport {
+    height: var(--lane-height);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .track {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: max-content;
+    will-change: transform;
+  }
+
+  .card-button {
+    width: var(--card-width);
+    flex: 0 0 var(--card-width);
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .card-button:active {
+    transform: scale(0.94);
+  }
+
+  .card {
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 8px 26px rgba(180, 80, 160, 0.22);
+    position: relative;
+    min-height: 160px;
+    display: grid;
+    place-items: center;
+    color: #c73691;
+    font-weight: 900;
+    font-size: 12px;
+  }
+
+  .card.rarity-4 {
+    box-shadow: 0 8px 28px rgba(245, 190, 50, 0.44);
+  }
+
+  .card.rarity-3 {
+    box-shadow: 0 8px 26px rgba(155, 155, 210, 0.34);
+  }
+
+  .card img {
+    width: 100%;
+    display: block;
+    pointer-events: none;
+  }
+
+  .card-caption {
+    margin-top: 6px;
+    font-size: 10px;
+    font-weight: 800;
+    color: #b84893;
+    line-height: 1.25;
+    height: 2.5em;
+    overflow: hidden;
+    text-align: center;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  .footer {
+    text-align: center;
+    font-size: 12px;
+    color: #9a6897;
+  }
+
+  .control-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+
+  .control-button {
+    border: 1.5px solid rgba(216, 61, 156, 0.24);
+    border-radius: 999px;
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.78);
+    color: #c73691;
+    font-weight: 800;
+    font-size: 13px;
+    box-shadow: 0 4px 14px rgba(180, 80, 160, 0.12);
+  }
+
+  .modal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    place-items: center;
+    padding: 18px;
+    background: rgba(64, 22, 58, 0.48);
+    z-index: 10;
+  }
+
+  .modal.open {
+    display: grid;
+  }
+
+  .modal-card {
+    width: min(92vw, 460px);
+    max-height: 92dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 10px;
+    padding: 14px;
+    border-radius: 26px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,245,252,0.98));
+    box-shadow: 0 24px 60px rgba(46, 12, 48, 0.32);
+  }
+
+  .modal-head {
+    display: flex;
+    gap: 8px;
+    align-items: start;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-size: 17px;
+    font-weight: 900;
+    color: #c73691;
+    line-height: 1.35;
+  }
+
+  .modal-meta {
+    margin-top: 4px;
+    font-size: 12px;
+    color: #8f5a92;
+  }
+
+  .close-button {
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: #f7e3f2;
+    color: #b53686;
+    font-size: 22px;
+    font-weight: 900;
+  }
+
+  .large-image-wrap {
+    min-height: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    display: grid;
+    place-items: start center;
+  }
+
+  .large-image {
+    width: min(100%, 380px);
+    border-radius: 18px;
+    box-shadow: 0 12px 34px rgba(160, 80, 150, 0.26);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .modal-button {
+    min-width: 104px;
+    border: none;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #e64aa4;
+    color: white;
+    font-weight: 900;
+    font-size: 14px;
+  }
+
+  .modal-button.secondary {
+    background: #efe0f1;
+    color: #a23a8a;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    padding: 9px 14px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.94);
+    color: #c73691;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 8px 24px rgba(120, 40, 110, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 20;
+  }
+
+  .toast.show {
+    opacity: 1;
+  }
+
+  @media (min-width: 700px) {
+    :root {
+      --card-width: min(22vw, 180px);
+      --lane-height: min(54vw, 390px);
+    }
+
+    .track {
+      gap: 22px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="title">アイプリカード 回転レーン</div>
+    <div class="subtitle">カードをタッチすると表面を大きく表示します</div>
+  </header>
+
+  <main class="lane-wrap">
+    <div class="lane-label">右から左へカードが流れます</div>
+    <div class="track-viewport" id="viewport" aria-label="アイプリカードの回転レーン">
+      <div class="track" id="track"></div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="control-row">
+      <button class="control-button" id="speed-down">ゆっくり</button>
+      <button class="control-button" id="toggle-pause">一時停止</button>
+      <button class="control-button" id="speed-up">はやく</button>
+      <button class="control-button" id="reset-flow">流し直す</button>
+    </div>
+    <div>v2: JavaScriptで確実に横移動させる版です。</div>
+  </footer>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <section class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-meta" id="modal-meta"></div>
+      </div>
+      <button class="close-button" id="close-modal" aria-label="閉じる">×</button>
+    </div>
+
+    <div class="large-image-wrap">
+      <img class="large-image" id="large-image" src="" alt="カード表面" draggable="false" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-button secondary" id="show-front">表面</button>
+      <button class="modal-button secondary" id="show-back">裏面</button>
+      <button class="modal-button" id="close-modal-2">戻る</button>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast">カードを開きました</div>
+
+<script>
+  // aipri-card-view と同じ考え方:
+  // base + card.id + "_O.webp" が表面、base + card.id + "_U.webp" が裏面
+  const BASE_OA1 = "https://aipri.jp/card/img/oa1/";
+
+  const CARDS = [
+    { id:"OA1-001", name:"すきすきハートバズリウム",             char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-002", name:"すきすきハートバズリウム",             char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-003", name:"ゆめゆめスターバズリウム",             char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-004", name:"ゆめゆめスターバズリウム",             char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-005", name:"ゆうじょうスイーツバズリウム",          char:"ぐみ",   rarity:4, base:BASE_OA1 },
+    { id:"OA1-006", name:"トキメキトゥインクルピンク",           char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-007", name:"トキメキトゥインクルピンク",           char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-008", name:"トキメキトゥインクルブルー",           char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-009", name:"トキメキトゥインクルブルー",           char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-010", name:"リボンアイドルピンク",                 char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-011", name:"リボンアイドルブルー",                 char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-012", name:"リボンアイドルグリーン",               char:"ぐみ",   rarity:4, base:BASE_OA1 },
+    { id:"OA1-013", name:"ふわふわキャット",                     char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-014", name:"ふわふわキャット",                     char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-015", name:"ほしのゆうびんやさん",                 char:"あおい", rarity:4, base:BASE_OA1 },
+    { id:"OA1-016", name:"ほしのゆうびんやさん",                 char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-017", name:"ほしのゆうびんやさん",                 char:"ぐみ",   rarity:4, base:BASE_OA1 },
+    { id:"OA1-018", name:"ポップンマシュマロ",                   char:"ぐみ",   rarity:4, base:BASE_OA1 },
+    { id:"OA1-019", name:"ポップンマシュマロ",                   char:"いのり", rarity:4, base:BASE_OA1 },
+    { id:"OA1-020", name:"ゆうじょうさくらツイン すきすきピンク", char:"いのり", rarity:4, base:BASE_OA1 }
+  ];
+
+  const RARITY_STARS = { 4:"★★★★", 3:"★★★", 2:"★★" };
+
+  const track = document.getElementById("track");
+  const viewport = document.getElementById("viewport");
+  const modal = document.getElementById("modal");
+  const modalTitle = document.getElementById("modal-title");
+  const modalMeta = document.getElementById("modal-meta");
+  const largeImage = document.getElementById("large-image");
+  const toast = document.getElementById("toast");
+
+  let selectedCard = null;
+  let currentSide = "O";
+  let paused = false;
+  let speedPxPerSec = 56;
+  let x = 0;
+  let trackWidth = 0;
+  let lastTime = 0;
+  let rafId = 0;
+
+  function imgUrl(card, side) {
+    return `${card.base}${card.id}_${side}.webp`;
+  }
+
+  function renderTrack() {
+    track.innerHTML = "";
+
+    // 2周分を描画。左に流れきったら位置を戻してループする。
+    const loopCards = [...CARDS, ...CARDS];
+
+    loopCards.forEach((card, index) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "card-button";
+      button.setAttribute("aria-label", `${card.id} ${card.name} を開く`);
+
+      const cardEl = document.createElement("div");
+      cardEl.className = `card rarity-${card.rarity}`;
+
+      const img = document.createElement("img");
+      img.src = imgUrl(card, "O");
+      img.alt = `${card.name} 表面`;
+      img.loading = index < CARDS.length ? "eager" : "lazy";
+      img.onerror = () => {
+        cardEl.textContent = `${card.id}\n画像未取得`;
+      };
+
+      const caption = document.createElement("div");
+      caption.className = "card-caption";
+      caption.textContent = card.name;
+
+      cardEl.appendChild(img);
+      button.appendChild(cardEl);
+      button.appendChild(caption);
+
+      button.addEventListener("click", () => openCard(card, "O"));
+      track.appendChild(button);
+    });
+
+    measure();
+    resetFlow();
+  }
+
+  function measure() {
+    // 2周分描画しているので、1周分の横幅
+    trackWidth = Math.max(1, track.scrollWidth / 2);
+    track.style.transform = `translate3d(${x}px, -50%, 0)`;
+  }
+
+  function resetFlow() {
+    // 右端の外側から流れてくるように開始
+    x = viewport.clientWidth + 16;
+    lastTime = performance.now();
+    track.style.transform = `translate3d(${x}px, -50%, 0)`;
+    showToast("右から流し直します");
+  }
+
+  function animate(now) {
+    const dt = Math.min(0.05, (now - lastTime) / 1000 || 0);
+    lastTime = now;
+
+    if (!paused) {
+      x -= speedPxPerSec * dt;
+
+      // 1周分流れたら、自然につながる位置へ戻す
+      if (x <= -trackWidth) {
+        x += trackWidth;
+      }
+
+      track.style.transform = `translate3d(${x}px, -50%, 0)`;
+    }
+
+    rafId = requestAnimationFrame(animate);
+  }
+
+  function openCard(card, side) {
+    selectedCard = card;
+    currentSide = side;
+    paused = true;
+    applyPauseButton();
+
+    modalTitle.textContent = card.name;
+    modalMeta.textContent = `${card.id} / ${card.char} / ${RARITY_STARS[card.rarity] || ""}`;
+    largeImage.src = imgUrl(card, currentSide);
+    largeImage.alt = `${card.name} ${currentSide === "O" ? "表面" : "裏面"}`;
+    modal.classList.add("open");
+    showToast("カードを開きました");
+  }
+
+  function closeModal() {
+    modal.classList.remove("open");
+    selectedCard = null;
+  }
+
+  function switchSide(side) {
+    if (!selectedCard) return;
+    currentSide = side;
+    largeImage.src = imgUrl(selectedCard, currentSide);
+    largeImage.alt = `${selectedCard.name} ${currentSide === "O" ? "表面" : "裏面"}`;
+  }
+
+  function applyPauseButton() {
+    document.getElementById("toggle-pause").textContent = paused ? "再開" : "一時停止";
+  }
+
+  function showToast(message) {
+    toast.textContent = message;
+    toast.classList.add("show");
+    window.clearTimeout(showToast.timer);
+    showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1000);
+  }
+
+  document.getElementById("close-modal").addEventListener("click", closeModal);
+  document.getElementById("close-modal-2").addEventListener("click", closeModal);
+  document.getElementById("show-front").addEventListener("click", () => switchSide("O"));
+  document.getElementById("show-back").addEventListener("click", () => switchSide("U"));
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeModal();
+  });
+
+  document.getElementById("toggle-pause").addEventListener("click", () => {
+    paused = !paused;
+    applyPauseButton();
+  });
+
+  document.getElementById("speed-down").addEventListener("click", () => {
+    speedPxPerSec = Math.max(20, speedPxPerSec - 14);
+    showToast("ゆっくりにしました");
+  });
+
+  document.getElementById("speed-up").addEventListener("click", () => {
+    speedPxPerSec = Math.min(160, speedPxPerSec + 14);
+    showToast("はやくしました");
+  });
+
+  document.getElementById("reset-flow").addEventListener("click", resetFlow);
+
+  window.addEventListener("resize", () => {
+    measure();
+    resetFlow();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    lastTime = performance.now();
+  });
+
+  renderTrack();
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(animate);
+</script>
+</body>
+</html>
