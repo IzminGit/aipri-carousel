@@ -276,7 +276,19 @@
     }
 
     .app {
-      padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      padding: max(10px, env(safe-area-inset-top)) 0 max(10px, env(safe-area-inset-bottom));
+    }
+
+    .lane-wrap {
+      border-radius: 0;
+    }
+
+    .modal {
+      padding: max(6px, env(safe-area-inset-top)) 0 max(6px, env(safe-area-inset-bottom));
+    }
+
+    .modal-card {
+      width: min(calc((100dvh - 12px) * 0.6847), 100vw, 460px);
     }
   }
 </style>
