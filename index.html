@@ -236,6 +236,19 @@
     100% { background-position: -50% -50%; }
   }
 
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    animation: particle-fly 1.2s ease-out forwards;
+    z-index: 100;
+    will-change: transform, opacity;
+  }
+
+  @keyframes particle-fly {
+    0%   { transform: translate(0,0) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(var(--tx),var(--ty)) scale(0.3) rotate(var(--rot)); opacity: 0; }
+  }
+
   @media (min-width: 700px) {
     :root {
       --card-width: min(22vw, 180px);
@@ -494,6 +507,10 @@ const SETS = [
 SETS[0].cards = SETS.slice(1).flatMap(s => s.cards.map(c => ({ ...c, base: s.base })));
 
 const CARDS = SETS[0].cards;
+const PARTICLES = ['♡','✦','★','✿','💫','🌸','✨'];
+const PARTICLE_COLORS_4 = ['#f5c842','#ffe680','#ff9ecc','#c8a0ff'];
+const PARTICLE_COLORS_3 = ['#d0d0d0','#e8e8e8','#c0c0e8','#b0d0ff'];
+const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
   const track = document.getElementById("track");
   const viewport = document.getElementById("viewport");
@@ -612,14 +629,60 @@ const CARDS = SETS[0].cards;
     lastTime = performance.now();
   }
 
-  function flipLargeCard() {
+  function spawnParticles(x, y, rarity) {
+    const colors = rarity === 4 ? PARTICLE_COLORS_4 : rarity === 3 ? PARTICLE_COLORS_3 : PARTICLE_COLORS_2;
+    const count = rarity === 4 ? 12 : rarity === 3 ? 9 : 7;
+
+    for (let i = 0; i < count; i++) {
+      const el = document.createElement("div");
+      el.className = "particle";
+      el.textContent = PARTICLES[Math.floor(Math.random() * PARTICLES.length)];
+
+      const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+      const dist = 80 + Math.random() * 80;
+      const tx = Math.cos(angle) * dist;
+      const ty = Math.sin(angle) * dist - 40;
+      const rot = (Math.random() - 0.5) * 360;
+
+      el.style.cssText = `
+        left:${x}px; top:${y}px;
+        color:${colors[Math.floor(Math.random() * colors.length)]};
+        --tx:${tx}px; --ty:${ty}px; --rot:${rot}deg;
+        animation-delay:${Math.random() * 0.1}s;
+        font-size:${14 + Math.random() * 14}px;
+      `;
+
+      document.body.appendChild(el);
+      el.addEventListener("animationend", () => el.remove());
+    }
+  }
+
+  function flipLargeCard(event) {
     if (!selectedCard) return;
+    const rect = largeCardScene.getBoundingClientRect();
+    const cx = event?.clientX ?? rect.left + rect.width / 2;
+    const cy = event?.clientY ?? rect.top + rect.height / 2;
+    const tapRight = cx >= rect.left + rect.width / 2;
+
     currentSide = currentSide === "O" ? "U" : "O";
-    largeCurrentDeg += currentSide === "U" ? 180 : -180;
+    largeCurrentDeg += tapRight ? 180 : -180;
     largeCardInner.style.transition = "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)";
     largeCardInner.style.transform = `rotateY(${largeCurrentDeg}deg)`;
+
+    if (currentSide === "O") {
+      window.setTimeout(() => {
+        largeCardInner.style.transition = "none";
+        largeCardInner.style.transform = "rotateY(0deg)";
+        largeCurrentDeg = 0;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          largeCardInner.style.transition = "";
+        }));
+      }, 660);
+    }
+
     largeCardScene.classList.add("shimmering");
     window.setTimeout(() => largeCardScene.classList.remove("shimmering"), 700);
+    spawnParticles(cx, cy, selectedCard.rarity);
   }
 
 
