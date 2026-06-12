@@ -74,6 +74,7 @@
     height: var(--lane-height);
     overflow: hidden;
     position: relative;
+    touch-action: none;
   }
 
   .track {
@@ -529,6 +530,12 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   let trackWidth = 0;
   let lastTime = 0;
   let rafId = 0;
+  let resumeTimer = 0;
+  let dragPointerId = null;
+  let dragStartX = 0;
+  let dragLastX = 0;
+  let isDraggingLane = false;
+  let suppressNextCardClick = false;
 
   function imgUrl(card, side) {
     return `${card.base}${card.id}_${side}.webp`;
@@ -576,14 +583,23 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   function measure() {
     // 2周分描画しているので、1周分の横幅
     trackWidth = Math.max(1, track.scrollWidth / 2);
+    applyTrackPosition();
+  }
+
+  function applyTrackPosition() {
     track.style.transform = `translate3d(${x}px, -50%, 0)`;
+  }
+
+  function normalizeTrackPosition() {
+    if (!trackWidth) return;
+    while (x <= -trackWidth) x += trackWidth;
   }
 
   function resetFlow() {
     // 右端の外側から流れてくるように開始
     x = viewport.clientWidth + 16;
     lastTime = performance.now();
-    track.style.transform = `translate3d(${x}px, -50%, 0)`;
+    applyTrackPosition();
   }
 
   function animate(now) {
@@ -598,16 +614,122 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
         x += trackWidth;
       }
 
-      track.style.transform = `translate3d(${x}px, -50%, 0)`;
+      applyTrackPosition();
     }
 
     rafId = requestAnimationFrame(animate);
+  }
+
+  function scheduleLaneResume() {
+    window.clearTimeout(resumeTimer);
+    resumeTimer = window.setTimeout(() => {
+      if (!selectedCard) {
+        paused = false;
+        lastTime = performance.now();
+      }
+    }, 500);
+  }
+
+  function handleLanePointerDown(event) {
+    if (selectedCard || dragPointerId !== null || event.button !== 0) return;
+    dragPointerId = event.pointerId;
+    dragStartX = event.clientX;
+    dragLastX = event.clientX;
+    isDraggingLane = false;
+    window.clearTimeout(resumeTimer);
+    viewport.setPointerCapture?.(event.pointerId);
+  }
+
+  function handleLanePointerMove(event) {
+    if (event.pointerId !== dragPointerId) return;
+
+    const totalDx = event.clientX - dragStartX;
+    const frameDx = event.clientX - dragLastX;
+    dragLastX = event.clientX;
+
+    if (!isDraggingLane && Math.abs(totalDx) > 8) {
+      isDraggingLane = true;
+      suppressNextCardClick = true;
+      paused = true;
+    }
+
+    if (!isDraggingLane) return;
+
+    event.preventDefault();
+    x += frameDx;
+    normalizeTrackPosition();
+    applyTrackPosition();
+  }
+
+  function handleLanePointerEnd(event) {
+    if (event.pointerId !== dragPointerId) return;
+    viewport.releasePointerCapture?.(event.pointerId);
+    dragPointerId = null;
+
+    if (isDraggingLane) {
+      isDraggingLane = false;
+      scheduleLaneResume();
+      window.setTimeout(() => {
+        suppressNextCardClick = false;
+      }, 300);
+    }
+  }
+
+  function handleLaneTouchStart(event) {
+    if (selectedCard || dragPointerId !== null || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    dragPointerId = `touch-${touch.identifier}`;
+    dragStartX = touch.clientX;
+    dragLastX = touch.clientX;
+    isDraggingLane = false;
+    window.clearTimeout(resumeTimer);
+  }
+
+  function handleLaneTouchMove(event) {
+    if (typeof dragPointerId !== "string" || !dragPointerId.startsWith("touch-")) return;
+    const touchId = Number(dragPointerId.slice(6));
+    const touch = Array.from(event.touches).find(item => item.identifier === touchId);
+    if (!touch) return;
+
+    const totalDx = touch.clientX - dragStartX;
+    const frameDx = touch.clientX - dragLastX;
+    dragLastX = touch.clientX;
+
+    if (!isDraggingLane && Math.abs(totalDx) > 8) {
+      isDraggingLane = true;
+      suppressNextCardClick = true;
+      paused = true;
+    }
+
+    if (!isDraggingLane) return;
+
+    event.preventDefault();
+    x += frameDx;
+    normalizeTrackPosition();
+    applyTrackPosition();
+  }
+
+  function handleLaneTouchEnd(event) {
+    if (typeof dragPointerId !== "string" || !dragPointerId.startsWith("touch-")) return;
+    const touchId = Number(dragPointerId.slice(6));
+    const ended = Array.from(event.changedTouches).some(item => item.identifier === touchId);
+    if (!ended) return;
+
+    dragPointerId = null;
+    if (isDraggingLane) {
+      isDraggingLane = false;
+      scheduleLaneResume();
+      window.setTimeout(() => {
+        suppressNextCardClick = false;
+      }, 300);
+    }
   }
 
   function openCard(card, side) {
     selectedCard = card;
     currentSide = side;
     paused = true;
+    window.clearTimeout(resumeTimer);
     largeCurrentDeg = side === "U" ? 180 : 0;
     largeCardInner.style.transition = "none";
     largeCardInner.style.transform = `rotateY(${largeCurrentDeg}deg)`;
@@ -688,6 +810,20 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
   document.getElementById("close-modal").addEventListener("click", closeModal);
   largeCardScene.addEventListener("click", flipLargeCard);
+  viewport.addEventListener("pointerdown", handleLanePointerDown);
+  viewport.addEventListener("pointermove", handleLanePointerMove);
+  viewport.addEventListener("pointerup", handleLanePointerEnd);
+  viewport.addEventListener("pointercancel", handleLanePointerEnd);
+  viewport.addEventListener("touchstart", handleLaneTouchStart, { passive: true });
+  viewport.addEventListener("touchmove", handleLaneTouchMove, { passive: false });
+  viewport.addEventListener("touchend", handleLaneTouchEnd);
+  viewport.addEventListener("touchcancel", handleLaneTouchEnd);
+  track.addEventListener("click", (event) => {
+    if (!suppressNextCardClick) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressNextCardClick = false;
+  }, true);
 
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeModal();
