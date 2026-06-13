@@ -175,21 +175,6 @@
     animation: card-arrive 0.78s cubic-bezier(0.18, 0.9, 0.24, 1.16) both;
   }
 
-  .close-button {
-    position: fixed;
-    top: max(10px, env(safe-area-inset-top));
-    right: max(10px, env(safe-area-inset-right));
-    width: 38px;
-    height: 38px;
-    border: none;
-    border-radius: 50%;
-    background: rgba(247, 227, 242, 0.95);
-    color: #b53686;
-    font-size: 22px;
-    font-weight: 900;
-    z-index: 11;
-  }
-
   .large-card-scene {
     width: 100%;
     height: 100%;
@@ -339,7 +324,6 @@
 
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-label="カード詳細">
   <section class="modal-card">
-    <button class="close-button" id="close-modal" aria-label="閉じる">×</button>
     <div class="large-card-scene" id="large-card-scene">
       <div class="large-card-inner" id="large-card-inner">
         <div class="large-card-face card-front">
@@ -925,7 +909,6 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   }
 
 
-  document.getElementById("close-modal").addEventListener("click", closeModal);
   largeCardScene.addEventListener("click", flipLargeCard);
   viewport.addEventListener("pointerdown", handleLanePointerDown);
   viewport.addEventListener("pointermove", handleLanePointerMove);
