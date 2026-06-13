@@ -567,6 +567,9 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   let dragPointerId = null;
   let dragStartX = 0;
   let dragLastX = 0;
+  let dragLastTime = 0;
+  let laneVelocityPxPerSec = 0;
+  let isGlidingLane = false;
   let isDraggingLane = false;
   let suppressNextCardClick = false;
 
@@ -639,7 +642,18 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     const dt = Math.min(0.05, (now - lastTime) / 1000 || 0);
     lastTime = now;
 
-    if (!paused) {
+    if (isGlidingLane && !selectedCard) {
+      x += laneVelocityPxPerSec * dt;
+      laneVelocityPxPerSec *= Math.pow(0.08, dt);
+      normalizeTrackPosition();
+      applyTrackPosition();
+
+      if (Math.abs(laneVelocityPxPerSec) < 18) {
+        isGlidingLane = false;
+        laneVelocityPxPerSec = 0;
+        scheduleLaneResume();
+      }
+    } else if (!paused) {
       x -= speedPxPerSec * dt;
 
       // 1周分流れたら、自然につながる位置へ戻す
@@ -657,17 +671,36 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     window.clearTimeout(resumeTimer);
     resumeTimer = window.setTimeout(() => {
       if (!selectedCard) {
+        isGlidingLane = false;
+        laneVelocityPxPerSec = 0;
         paused = false;
         lastTime = performance.now();
       }
     }, 500);
   }
 
+  function startLaneGlide() {
+    const velocity = Math.max(-1600, Math.min(1600, laneVelocityPxPerSec));
+    if (Math.abs(velocity) < 120) {
+      laneVelocityPxPerSec = 0;
+      scheduleLaneResume();
+      return;
+    }
+
+    laneVelocityPxPerSec = velocity;
+    isGlidingLane = true;
+    paused = true;
+    lastTime = performance.now();
+  }
+
   function handleLanePointerDown(event) {
     if (selectedCard || dragPointerId !== null || event.button !== 0) return;
+    isGlidingLane = false;
+    laneVelocityPxPerSec = 0;
     dragPointerId = event.pointerId;
     dragStartX = event.clientX;
     dragLastX = event.clientX;
+    dragLastTime = performance.now();
     isDraggingLane = false;
     window.clearTimeout(resumeTimer);
     viewport.setPointerCapture?.(event.pointerId);
@@ -678,7 +711,11 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
     const totalDx = event.clientX - dragStartX;
     const frameDx = event.clientX - dragLastX;
+    const now = performance.now();
+    const dt = Math.max(16, now - dragLastTime) / 1000;
     dragLastX = event.clientX;
+    dragLastTime = now;
+    laneVelocityPxPerSec = (laneVelocityPxPerSec * 0.55) + ((frameDx / dt) * 0.45);
 
     if (!isDraggingLane && Math.abs(totalDx) > 8) {
       isDraggingLane = true;
@@ -701,7 +738,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
     if (isDraggingLane) {
       isDraggingLane = false;
-      scheduleLaneResume();
+      startLaneGlide();
       window.setTimeout(() => {
         suppressNextCardClick = false;
       }, 300);
@@ -711,9 +748,12 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   function handleLaneTouchStart(event) {
     if (selectedCard || dragPointerId !== null || event.touches.length !== 1) return;
     const touch = event.touches[0];
+    isGlidingLane = false;
+    laneVelocityPxPerSec = 0;
     dragPointerId = `touch-${touch.identifier}`;
     dragStartX = touch.clientX;
     dragLastX = touch.clientX;
+    dragLastTime = performance.now();
     isDraggingLane = false;
     window.clearTimeout(resumeTimer);
   }
@@ -726,7 +766,11 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
     const totalDx = touch.clientX - dragStartX;
     const frameDx = touch.clientX - dragLastX;
+    const now = performance.now();
+    const dt = Math.max(16, now - dragLastTime) / 1000;
     dragLastX = touch.clientX;
+    dragLastTime = now;
+    laneVelocityPxPerSec = (laneVelocityPxPerSec * 0.55) + ((frameDx / dt) * 0.45);
 
     if (!isDraggingLane && Math.abs(totalDx) > 8) {
       isDraggingLane = true;
@@ -751,7 +795,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     dragPointerId = null;
     if (isDraggingLane) {
       isDraggingLane = false;
-      scheduleLaneResume();
+      startLaneGlide();
       window.setTimeout(() => {
         suppressNextCardClick = false;
       }, 300);
@@ -763,6 +807,8 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     selectedCard = card;
     currentSide = side;
     paused = true;
+    isGlidingLane = false;
+    laneVelocityPxPerSec = 0;
     window.clearTimeout(resumeTimer);
     largeCurrentDeg = side === "U" ? 180 : 0;
     largeCardInner.style.transition = "none";
@@ -805,6 +851,8 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     modal.classList.remove("open");
     modalCard.classList.remove("entering");
     selectedCard = null;
+    isGlidingLane = false;
+    laneVelocityPxPerSec = 0;
     paused = false;
     lastTime = performance.now();
   }
