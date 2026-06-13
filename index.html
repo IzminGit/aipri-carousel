@@ -293,6 +293,17 @@
     }
   }
 
+  @media (orientation: landscape) and (min-width: 900px) and (min-height: 600px) {
+    :root {
+      --card-width: min(34dvh, 340px);
+      --lane-height: min(64dvh, calc(100dvh - 72px), 640px);
+    }
+
+    .track {
+      gap: 28px;
+    }
+  }
+
   @media (orientation: landscape) and (max-height: 500px) {
     :root {
       --card-width: min(22vw, 180px);
