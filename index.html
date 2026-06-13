@@ -156,12 +156,17 @@
     display: grid;
   }
 
+  .modal.open .modal-card {
+    animation: card-arrive 0.72s cubic-bezier(0.18, 0.9, 0.24, 1.18) both;
+  }
+
   .modal-card {
     width: min(calc((100dvh - 20px) * 0.6847), calc(100vw - 20px), 460px);
     aspect-ratio: 152 / 222;
     position: relative;
     display: grid;
     place-items: center;
+    transform-origin: center;
   }
 
   .close-button {
@@ -235,6 +240,27 @@
   @keyframes shimmer {
     0%   { background-position: 200% 200%; }
     100% { background-position: -50% -50%; }
+  }
+
+  @keyframes card-arrive {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 18px, 0) scale(0.28) rotateY(-80deg) rotateZ(-8deg);
+      filter: drop-shadow(0 0 0 rgba(255,255,255,0));
+    }
+    46% {
+      opacity: 1;
+      transform: translate3d(0, -8px, 0) scale(1.08) rotateY(24deg) rotateZ(5deg);
+      filter: drop-shadow(0 0 18px rgba(255, 214, 246, 0.86));
+    }
+    72% {
+      transform: translate3d(0, 3px, 0) scale(0.98) rotateY(-10deg) rotateZ(-2deg);
+    }
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1) rotateY(0deg) rotateZ(0deg);
+      filter: drop-shadow(0 0 0 rgba(255,255,255,0));
+    }
   }
 
   .particle {
@@ -572,7 +598,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
       button.appendChild(cardEl);
       button.appendChild(caption);
 
-      button.addEventListener("click", () => openCard(card, "O"));
+      button.addEventListener("click", (event) => openCard(card, "O", event));
       track.appendChild(button);
     });
 
@@ -725,7 +751,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     }
   }
 
-  function openCard(card, side) {
+  function openCard(card, side, event) {
     selectedCard = card;
     currentSide = side;
     paused = true;
@@ -739,6 +765,9 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     largeBackImage.src = imgUrl(card, "U");
     largeBackImage.alt = `${card.name} 裏面`;
     modal.classList.add("open");
+    const cx = event?.clientX ?? window.innerWidth / 2;
+    const cy = event?.clientY ?? window.innerHeight / 2;
+    spawnParticles(cx, cy, card.rarity);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       largeCardInner.style.transition = "";
     }));
