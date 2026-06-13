@@ -156,10 +156,6 @@
     display: grid;
   }
 
-  .modal.open .modal-card {
-    animation: card-arrive 0.72s cubic-bezier(0.18, 0.9, 0.24, 1.18) both;
-  }
-
   .modal-card {
     width: min(calc((100dvh - 20px) * 0.6847), calc(100vw - 20px), 460px);
     aspect-ratio: 152 / 222;
@@ -167,6 +163,16 @@
     display: grid;
     place-items: center;
     transform-origin: center;
+    --entry-x: 0px;
+    --entry-y: 0px;
+    --entry-scale: 0.28;
+    --entry-spin: -70deg;
+    --entry-rebound-spin: 12deg;
+    --entry-settle-spin: -5deg;
+  }
+
+  .modal-card.entering {
+    animation: card-arrive 0.78s cubic-bezier(0.18, 0.9, 0.24, 1.16) both;
   }
 
   .close-button {
@@ -245,16 +251,16 @@
   @keyframes card-arrive {
     0% {
       opacity: 0;
-      transform: translate3d(0, 18px, 0) scale(0.28) rotateY(-80deg) rotateZ(-8deg);
+      transform: translate3d(var(--entry-x), var(--entry-y), 0) scale(var(--entry-scale)) rotateY(var(--entry-spin)) rotateZ(-8deg);
       filter: drop-shadow(0 0 0 rgba(255,255,255,0));
     }
-    46% {
+    58% {
       opacity: 1;
-      transform: translate3d(0, -8px, 0) scale(1.08) rotateY(24deg) rotateZ(5deg);
+      transform: translate3d(0, -8px, 0) scale(1.06) rotateY(var(--entry-rebound-spin)) rotateZ(5deg);
       filter: drop-shadow(0 0 18px rgba(255, 214, 246, 0.86));
     }
-    72% {
-      transform: translate3d(0, 3px, 0) scale(0.98) rotateY(-10deg) rotateZ(-2deg);
+    78% {
+      transform: translate3d(0, 3px, 0) scale(0.98) rotateY(var(--entry-settle-spin)) rotateZ(-2deg);
     }
     100% {
       opacity: 1;
@@ -542,6 +548,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   const track = document.getElementById("track");
   const viewport = document.getElementById("viewport");
   const modal = document.getElementById("modal");
+  const modalCard = modal.querySelector(".modal-card");
   const largeCardScene = document.getElementById("large-card-scene");
   const largeCardInner = document.getElementById("large-card-inner");
   const largeFrontImage = document.getElementById("large-front-image");
@@ -752,6 +759,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
   }
 
   function openCard(card, side, event) {
+    const sourceRect = event?.currentTarget?.querySelector(".card")?.getBoundingClientRect();
     selectedCard = card;
     currentSide = side;
     paused = true;
@@ -764,7 +772,27 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
     largeFrontImage.alt = `${card.name} 表面`;
     largeBackImage.src = imgUrl(card, "U");
     largeBackImage.alt = `${card.name} 裏面`;
+    modalCard.classList.remove("entering");
     modal.classList.add("open");
+    if (sourceRect) {
+      const targetRect = modalCard.getBoundingClientRect();
+      const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+      const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+      const targetCenterX = targetRect.left + targetRect.width / 2;
+      const targetCenterY = targetRect.top + targetRect.height / 2;
+      const entryScale = Math.max(0.08, sourceRect.width / targetRect.width);
+      const spinDirection = sourceCenterX < targetCenterX ? -1 : 1;
+      const entrySpin = 82 * spinDirection;
+
+      modalCard.style.setProperty("--entry-x", `${sourceCenterX - targetCenterX}px`);
+      modalCard.style.setProperty("--entry-y", `${sourceCenterY - targetCenterY}px`);
+      modalCard.style.setProperty("--entry-scale", entryScale.toFixed(4));
+      modalCard.style.setProperty("--entry-spin", `${entrySpin}deg`);
+      modalCard.style.setProperty("--entry-rebound-spin", `${entrySpin * -0.16}deg`);
+      modalCard.style.setProperty("--entry-settle-spin", `${entrySpin * 0.07}deg`);
+    }
+    modalCard.offsetWidth;
+    modalCard.classList.add("entering");
     const cx = event?.clientX ?? window.innerWidth / 2;
     const cy = event?.clientY ?? window.innerHeight / 2;
     spawnParticles(cx, cy, card.rarity);
@@ -775,6 +803,7 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
   function closeModal() {
     modal.classList.remove("open");
+    modalCard.classList.remove("entering");
     selectedCard = null;
     paused = false;
     lastTime = performance.now();
