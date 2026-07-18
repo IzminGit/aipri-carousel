@@ -34,6 +34,25 @@
     padding: 12px;
   }
 
+  .tabs {
+    width: min(100%, 900px);
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 4px;
+  }
+  .tab {
+    flex: 0 0 auto;
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.72);
+    color: #a2438c;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .tab.active { background: #d84a9c; color: white; }
+
   .lane-wrap {
     width: 100%;
     align-self: center;
@@ -315,6 +334,7 @@
 </head>
 <body>
 <div class="app">
+  <nav class="tabs" id="tabs" aria-label="カードセット"></nav>
   <main class="lane-wrap">
     <div class="track-viewport" id="viewport" aria-label="カード表示エリア">
       <div class="track" id="track"></div>
@@ -340,12 +360,15 @@
 
 <script>
 let CARDS = [];
+let SETS = [];
+let currentSet = 0;
 const PARTICLES = ['♡','✦','★','✿','💫','🌸','✨'];
 const PARTICLE_COLORS_4 = ['#f5c842','#ffe680','#ff9ecc','#c8a0ff'];
 const PARTICLE_COLORS_3 = ['#d0d0d0','#e8e8e8','#c0c0e8','#b0d0ff'];
 const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
   const track = document.getElementById("track");
+  const tabs = document.getElementById("tabs");
   const viewport = document.getElementById("viewport");
   const modal = document.getElementById("modal");
   const modalCard = modal.querySelector(".modal-card");
@@ -414,6 +437,27 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
 
     measure();
     resetFlow();
+  }
+
+  function switchSet(index) {
+    currentSet = index;
+    CARDS = index === 0
+      ? SETS.flatMap(set => set.cards.map(card => ({ ...card, base: set.base })))
+      : SETS[index - 1].cards.map(card => ({ ...card, base: SETS[index - 1].base }));
+    tabs.querySelectorAll('.tab').forEach((tab, i) => tab.classList.toggle('active', i === index));
+    renderTrack();
+  }
+
+  function renderTabs() {
+    tabs.innerHTML = '';
+    ['全て', ...SETS.map(set => set.label)].forEach((label, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `tab${index === currentSet ? ' active' : ''}`;
+      button.textContent = label;
+      button.addEventListener('click', () => switchSet(index));
+      tabs.appendChild(button);
+    });
   }
 
   function measure() {
@@ -748,8 +792,9 @@ const PARTICLE_COLORS_2 = ['#ff9ec4','#ffcce0','#ffa0d0','#ffb0e8'];
       const response = await fetch("./cards.json");
       if (!response.ok) throw new Error("カードデータの読み込みに失敗しました");
       const data = await response.json();
-      CARDS = data.sets.flatMap(set => set.cards.map(card => ({ ...card, base: set.base })));
-      renderTrack();
+      SETS = data.sets;
+      renderTabs();
+      switchSet(0);
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(animate);
     } catch (error) {
