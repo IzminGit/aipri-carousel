@@ -33,3 +33,5 @@ jobs:
           git add cards.json
           git commit -m "Update card catalog for 2026-07-31"
           git push origin HEAD:agent/update-card-catalog-20260731
+
+# retrigger
